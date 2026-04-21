@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trackify - Courier System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        h1 ,h2{
+    text-align: center;
+}
+
+        input {
+    padding: 10px;
+    margin: 5px 0;
+    width: 220px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+       button {
+    padding: 10px 15px;
+    background: linear-gradient(45deg, #3498db, #6dd5fa);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        .box {
+    background: white;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+        table {
+            border-collapse: collapse;
+            margin-top: 10px;
+            background: white;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #eee;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Trackify - Courier System</h1>
+
+    <div class="box">
+        <h2>Add Parcel</h2>
+        <input id="parcelTrackingId" placeholder="Tracking ID"><br>
+        <input id="parcelSender" placeholder="Sender"><br>
+        <input id="parcelReceiver" placeholder="Receiver"><br>
+        <button onclick="addParcel()">Add Parcel</button>
+    </div>
+
+    <div class="box">
+        <h2>Add Tracking Update</h2>
+        <input id="updateTrackingId" placeholder="Tracking ID"><br>
+        <input id="updateStatus" placeholder="Status"><br>
+        <input id="updateLocation" placeholder="Location"><br>
+        <button onclick="addUpdate()">Add Update</button>
+    </div>
+
+    <div class="box">
+        <h2>Track Parcel</h2>
+        <input id="searchTrackingId" placeholder="Tracking ID">
+        <button onclick="trackParcel()">Track</button>
+
+        <div id="output"></div>
+    </div>
+<div class="box">
+    <h2>View All Parcels</h2>
+    <button onclick="viewParcels()">View All Parcels</button>
+    <div id="allParcels"></div>
+</div>
+
+<div class="box">
+    <h2>Delete Parcel</h2>
+    <input id="deleteTrackingId" placeholder="Tracking ID"><br>
+    <button onclick="deleteParcel()">Delete Parcel</button>
+</div>
+    <script>
+        function addParcel() {
+            fetch('http://localhost:3000/add-parcel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tracking_id: document.getElementById('parcelTrackingId').value,
+                    sender: document.getElementById('parcelSender').value,
+                    receiver: document.getElementById('parcelReceiver').value
+                })
+            })
+            .then(res => res.text())
+            .then(data => alert(data))
+            .catch(err => {
+                console.log(err);
+                alert('Error adding parcel');
+            });
+        }
+
+        function addUpdate() {
+            const trackingIdValue = document.getElementById('updateTrackingId').value;
+            const statusValue = document.getElementById('updateStatus').value;
+            const locationValue = document.getElementById('updateLocation').value;
+
+            console.log('Sending update:', trackingIdValue, statusValue, locationValue);
+
+            fetch('http://localhost:3000/add-update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tracking_id: trackingIdValue,
+                    parcel_status: statusValue,
+                    parcel_location: locationValue
+                })
+            })
+            .then(res => res.text())
+            .then(data => alert(data))
+            .catch(err => {
+                console.log(err);
+                alert('Error adding update');
+            });
+        }
+
+        function trackParcel() {
+            fetch('http://localhost:3000/track/' + document.getElementById('searchTrackingId').value)
+            .then(res => res.json())
+            .then(data => {
+                if (data.length === 0) {
+                    document.getElementById('output').innerHTML = '<p>No tracking data found</p>';
+                    return;
+                }
+
+                let table = `
+                    <table>
+                        <tr>
+                            <th>Tracking ID</th>
+                            <th>Sender</th>
+                            <th>Receiver</th>
+                            <th>Status</th>
+                            <th>Location</th>
+                        </tr>
+                `;
+
+                data.forEach(row => {
+                    table += `
+                        <tr>
+                            <td>${row.tracking_id ?? ''}</td>
+                            <td>${row.sender ?? ''}</td>
+                            <td>${row.receiver ?? ''}</td>
+                            <td>${row.status ?? ''}</td>
+                            <td>${row.location ?? ''}</td>
+                        </tr>
+                    `;
+                });
+
+                table += '</table>';
+                document.getElementById('output').innerHTML = table;
+            })
+            .catch(err => {
+                console.log(err);
+                document.getElementById('output').innerHTML = '<p>Error fetching tracking data</p>';
+            });
+        }
+        function viewParcels() {
+    fetch('http://localhost:3000/parcels')
+    .then(res => res.json())
+    .then(data => {
+
+        let table = `
+        <table>
+            <tr>
+                <th>Tracking ID</th>
+                <th>Sender</th>
+                <th>Receiver</th>
+            </tr>
+        `;
+
+        data.forEach(row => {
+            table += `
+            <tr>
+                <td>${row.tracking_id}</td>
+                <td>${row.sender}</td>
+                <td>${row.receiver}</td>
+            </tr>
+            `;
+        });
+
+        table += "</table>";
+
+        document.getElementById('allParcels').innerHTML = table;
+    });
+}
+
+function deleteParcel() {
+    const id = document.getElementById('deleteTrackingId').value;
+
+    fetch('http://localhost:3000/delete-parcel/' + id, {
+        method: 'DELETE'
+    })
+    .then(res => res.text())
+    .then(data => alert(data));
+}
+    </script>
+
+</body>
+</html>
